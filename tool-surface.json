@@ -38,5 +38,10 @@
       ],
       "notes": "写操作（demand_submit/market_subscribe/unsubscribe）显式命名；需求单合规门（公开源 URL+公开数据声明）422 逐字段透传，绝不代勾；approval 档订阅自动转访问申请（上游语义）。"
     }
-  ]
+  ],
+  "tool_risk": {
+    "wire_demand_submit": "write",
+    "wire_market_subscribe": "cost",
+    "wire_market_unsubscribe": "write"
+  }
 }
