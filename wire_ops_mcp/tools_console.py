@@ -172,3 +172,38 @@ def register(mcp: FastMCP, client: WireClient) -> None:
             bearer=_bearer_or_raise(),
         )
         return {"result": result}
+
+    # ── 源包（3）──────────────────────────────────────────────────────────────
+
+    @mcp.tool
+    async def wire_packs_list() -> dict[str, Any]:
+        """源包目录 + 我的订阅（GET /api/v1/packs + /subscriptions）——只读。
+
+        包卡片含双语名称/描述与实时指标数；subscribed 为本企业已订包 id 列表。
+        """
+        packs = await client.request("GET", "/api/v1/packs", bearer=_bearer_or_raise())
+        subscribed = await client.request(
+            "GET", "/api/v1/packs/subscriptions", bearer=_bearer_or_raise()
+        )
+        return {"packs": packs, "subscribed": subscribed}
+
+    @mcp.tool
+    async def wire_pack_subscribe(pack_id: str) -> dict[str, Any]:
+        """订阅源包（POST /api/v1/packs/{id}/subscribe）——显式写操作。
+
+        订阅免费、幂等；未知包上游 404 原文透传。订阅后目录更新即跟踪。
+        """
+        result = await client.request(
+            "POST", f"/api/v1/packs/{pack_id}/subscribe",
+            bearer=_bearer_or_raise(), json_body={},
+        )
+        return {"result": result}
+
+    @mcp.tool
+    async def wire_pack_unsubscribe(pack_id: str) -> dict[str, Any]:
+        """退订源包（POST /api/v1/packs/{id}/unsubscribe）——显式写操作；幂等。"""
+        result = await client.request(
+            "POST", f"/api/v1/packs/{pack_id}/unsubscribe",
+            bearer=_bearer_or_raise(), json_body={},
+        )
+        return {"result": result}

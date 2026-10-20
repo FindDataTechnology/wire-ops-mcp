@@ -31,7 +31,10 @@
         "wire_dataset_rows",
         "wire_market_browse",
         "wire_market_subscribe",
-        "wire_market_unsubscribe"
+        "wire_market_unsubscribe",
+        "wire_packs_list",
+        "wire_pack_subscribe",
+        "wire_pack_unsubscribe"
       ],
       "data_sources": [
         "fd-wire-api 客户面 /api/v1/demands|datasets|market/*（柏讯控制台同源）"
@@ -42,6 +45,8 @@
   "tool_risk": {
     "wire_demand_submit": "write",
     "wire_market_subscribe": "cost",
-    "wire_market_unsubscribe": "write"
+    "wire_market_unsubscribe": "write",
+    "wire_pack_subscribe": "write",
+    "wire_pack_unsubscribe": "write"
   }
 }

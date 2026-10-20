@@ -113,3 +113,33 @@ async def test_missing_credential_hints_dual_track(monkeypatch):
             await c.call_tool("wire_datasets_list", {})
     assert "wdk_" in str(ei.value)
     assert fake.calls == []
+
+
+async def test_packs_list_reads_catalog_and_subscriptions(bearer):
+    fake = FakeClient(result={"packs": [{"id": "macro-price", "name_zh": "宏观价格"}], "subscribed": ["macro-price"]})
+    mcp = await _mk(fake)
+    async with Client(mcp) as c:
+        out = await c.call_tool("wire_packs_list", {})
+    calls = [(x["method"], x["path"]) for x in fake.calls]
+    assert ("GET", "/api/v1/packs") in calls
+    assert ("GET", "/api/v1/packs/subscriptions") in calls
+
+
+async def test_pack_subscribe_posts_and_reports(bearer):
+    fake = FakeClient(result={"pack_id": "macro-price", "subscribed": True})
+    mcp = await _mk(fake)
+    async with Client(mcp) as c:
+        await c.call_tool("wire_pack_subscribe", {"pack_id": "macro-price"})
+    call = fake.calls[0]
+    assert call["method"] == "POST"
+    assert call["path"] == "/api/v1/packs/macro-price/subscribe"
+
+
+async def test_pack_unsubscribe_posts_and_reports(bearer):
+    fake = FakeClient(result={"pack_id": "macro-price", "subscribed": False})
+    mcp = await _mk(fake)
+    async with Client(mcp) as c:
+        await c.call_tool("wire_pack_unsubscribe", {"pack_id": "macro-price"})
+    call = fake.calls[0]
+    assert call["method"] == "POST"
+    assert call["path"] == "/api/v1/packs/macro-price/unsubscribe"
