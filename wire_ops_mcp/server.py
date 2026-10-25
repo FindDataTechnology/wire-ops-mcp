@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from . import SERVER_NAME, tools_console
+from . import SERVER_NAME, surface_report, tools_console
 from .auth_gate import AuthGate, AuthGateMiddleware
 from .client import WireClient
 from .config import Settings
@@ -17,6 +17,8 @@ INSTRUCTIONS = (
 )
 
 _HEALTH_OK = b'{"status":"ok"}'
+_HEALTH_OK_REPORTED = b'{"status":"ok","last_surface_report":"ok"}'
+_HEALTH_FAILED_REPORTED = b'{"status":"ok","last_surface_report":"failed"}'
 
 
 def create_server(settings: Settings | None = None) -> "FastMCP":
@@ -28,6 +30,7 @@ def create_server(settings: Settings | None = None) -> "FastMCP":
     tools_console.register(mcp, client)
     mcp._wire_ops_client = client
     mcp._wire_ops_settings = settings
+    mcp._wire_surface_report = "not_configured"
     return mcp
 
 
@@ -40,11 +43,18 @@ def build_app(settings: Settings | None = None):
 
     async def app(scope, receive, send):
         if scope.get("type") == "http":
+            surface_report.ensure_started(mcp)  # 首请求触发：loop 已在跑
             path = (scope.get("path") or "").rstrip("/")
             if path == "/health":
+                state = getattr(mcp, "_wire_surface_report", "not_configured")
+                body = {
+                    "not_configured": _HEALTH_OK,
+                    "ok": _HEALTH_OK_REPORTED,
+                    "failed": _HEALTH_FAILED_REPORTED,
+                }.get(state, _HEALTH_OK)
                 await send({"type": "http.response.start", "status": 200,
                             "headers": [(b"content-type", b"application/json")]})
-                await send({"type": "http.response.body", "body": _HEALTH_OK})
+                await send({"type": "http.response.body", "body": body})
                 return
         await gate(scope, receive, send)
 
