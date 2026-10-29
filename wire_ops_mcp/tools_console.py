@@ -207,3 +207,113 @@ def register(mcp: FastMCP, client: WireClient) -> None:
             bearer=_bearer_or_raise(), json_body={},
         )
         return {"result": result}
+
+    # ── 对象浏览（wire-entity-v2；只读——对象修改沿修正层与动作闸，不在本面）──
+
+    @mcp.tool
+    async def wire_object_search(
+        entity_id: int,
+        q: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> Any:
+        """按实体搜索对象实例（GET /api/v1/entities/{id}/objects）——只读。
+
+        实体=客户在柏讯声明的业务对象类型（绑定数据集+主键）；q 按实体显示列
+        （缺省主键列）contains 检索。cell 档专属（免费档 403 如实）；他企实体
+        404 不泄露。返回行按声明列呈现，limit 钳制。
+        """
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if q:
+            params["q"] = q
+        return await client.request(
+            "GET",
+            f"/api/v1/entities/{entity_id}/objects",
+            bearer=_bearer_or_raise(),
+            params=params,
+        )
+
+    @mcp.tool
+    async def wire_object_get(entity_id: int, key: str) -> Any:
+        """按主键取单个对象（GET /api/v1/entities/{id}/objects/{key}）——只读。
+
+        零行命中返回结构化「无此对象」态（found=false，不泄露历史存在性）；
+        v0 仅支持单列主键实体。
+        """
+        return await client.request(
+            "GET",
+            f"/api/v1/entities/{entity_id}/objects/{key}",
+            bearer=_bearer_or_raise(),
+        )
+
+    @mcp.tool
+    async def wire_object_relations(
+        entity_id: int, key: str, relationship_id: int, page: int = 1
+    ) -> Any:
+        """沿关系遍历关联对象（GET …/objects/{key}/relations/{rid}）——只读。
+
+        按关系声明方向遍历：n:1 反查目标行 / 1:n 正查引用行 / m:n 经中间
+        数据集两段查询。只执行声明查询（读边界纪律），分页钳制。
+        """
+        return await client.request(
+            "GET",
+            f"/api/v1/entities/{entity_id}/objects/{key}/relations/{relationship_id}",
+            bearer=_bearer_or_raise(),
+            params={"page": page},
+        )
+
+    # ── 客户域动作（wire-domain-actions；提议面——执行走柏讯闸确认链，
+    #    工具面结构性无 execute；不镜像壹座拍板面）──
+
+    @mcp.tool
+    async def wire_action_list() -> Any:
+        """本企业已启用的域动作类型清单（GET /api/v1/domain-actions）——只读。
+
+        返回动作类型（挂实体、风险档、表单字段 schema）——供构造
+        wire_action_propose 提议。viewer 只读不受影响（list 无写语义）。
+        """
+        return await client.request(
+            "GET", "/api/v1/domain-actions", bearer=_bearer_or_raise()
+        )
+
+    @mcp.tool
+    async def wire_action_propose(
+        action_type_id: int,
+        values: dict[str, Any],
+        source_ref: str | None = None,
+    ) -> dict[str, Any]:
+        """提议一个域动作（POST /api/v1/domain-actions/propose）——写提议面。
+
+        **即时返回 pending 提议标识，不等待人工确认**（对偶义务：阻塞实现
+        会被壹座回合归因 stalled）；执行由人（owner）在柏讯控制台确认后经
+        闸管线落库——本工具面结构性无 execute。source_ref 为调用方原样透传
+        的岗位来源标注（≤256 字符，柏讯台账不解析）——壹座身份行 key 名
+        fleet=/post=/title=/target=，turn= 字段位预留。
+
+        viewer 角色不可提议（403）；未注册/停用/他企类型一律「未注册」拒绝；
+        表单值校验 422 逐字段。
+        """
+        body: dict[str, Any] = {
+            "action_type_id": action_type_id,
+            "values": values,
+        }
+        if source_ref:
+            body["source_ref"] = source_ref
+        return await client.request(
+            "POST", "/api/v1/domain-actions/propose",
+            bearer=_bearer_or_raise(), json_body=body,
+        )
+
+    @mcp.tool
+    async def wire_action_status(instance_id: int) -> Any:
+        """查域动作实例状态（GET /api/v1/domain-actions/instances/{id}）——只读。
+
+        返回实例台账行（status: awaiting_confirmation/executed/rejected/
+        failed/disabled；executed 含 correction_id 与 error 文本）。下轮巡检
+        读状态即可达意——柏讯侧不推送、壹座侧不轮询建徽标（评审 R2 口径）。
+        """
+        return await client.request(
+            "GET",
+            f"/api/v1/domain-actions/instances/{instance_id}",
+            bearer=_bearer_or_raise(),
+        )
