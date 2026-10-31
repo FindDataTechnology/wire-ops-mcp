@@ -317,3 +317,67 @@ def register(mcp: FastMCP, client: WireClient) -> None:
             f"/api/v1/domain-actions/instances/{instance_id}",
             bearer=_bearer_or_raise(),
         )
+
+    # ── 星研内容供给（3）──────────────────────────────────────────────────────
+    # 三类窄工具（spec「工具面显式窄声明」）：目录列举 / 条目检索 / claim 取回。
+    # 上游是官方公开件镜像，不读客户数据；但工具面仍拒绝未声明扩张——新增
+    # 端点必须先改 tool-surface.json（暴露面清单是发布门的唯一真源）。
+
+    @mcp.tool
+    async def wire_content_browse(
+        zone: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> Any:
+        """星研内容目录列举（GET /api/v1/xingyan/items）——只读。
+
+        zone ∈ briefings（内参）/ academy（学院）/ research（研究）；不传则三区
+        合并。返回条目摘要（slug、双语标题/摘要、日期、claim 计数、页面地址）
+        并携带 snapshot 块：source_sha 是上游快照指纹，stale=true 表示内容
+        落后于官网（此时仍返回上一版，绝不返回空集冒充）。
+        """
+        params: dict[str, Any] = {"page": page, "page_size": page_size}
+        if zone:
+            params["zone"] = zone
+        return await client.request(
+            "GET", "/api/v1/xingyan/items", bearer=_bearer_or_raise(), params=params
+        )
+
+    @mcp.tool
+    async def wire_content_search(
+        q: str,
+        zone: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> Any:
+        """星研内容条目检索（GET /api/v1/xingyan/items?q=）——只读。
+
+        关键词匹配双语标题/摘要与 slug；可与 zone 叠加。空结果如实为空——
+        不编造条目。响应同样携带 snapshot 指纹与陈旧标记。
+        """
+        params: dict[str, Any] = {"q": q, "page": page, "page_size": page_size}
+        if zone:
+            params["zone"] = zone
+        return await client.request(
+            "GET", "/api/v1/xingyan/items", bearer=_bearer_or_raise(), params=params
+        )
+
+    @mcp.tool
+    async def wire_claim_resolve(slug: str, claim_id: str, locale: str = "zh") -> Any:
+        """按全局 ID 取回一条 claim（GET /api/v1/xingyan/claims/{slug}/{claim_id}）。
+
+        全局 ID 形如 ``law-bench-evaluation-loop/c0001``（slug/claim-id，跨语言
+        同一 ID）。返回 claim 骨架（类型、证据 key 集）、锚定小节的正文
+        （section_text，按 locale 取对应语言正文；section_found=false 表示
+        锚点标题在当前正文里找不到，此时不给空串冒充内容）、以及逐条可解析的
+        证据来源（resolved=false 表示该 key 在当前条目来源里解不到）。
+
+        已撤销的 claim 返回 200 + status="withdrawn"（保留登记供溯源），
+        不是未找到；真正不存在才 404。
+        """
+        return await client.request(
+            "GET",
+            f"/api/v1/xingyan/claims/{slug}/{claim_id}",
+            bearer=_bearer_or_raise(),
+            params={"locale": locale},
+        )

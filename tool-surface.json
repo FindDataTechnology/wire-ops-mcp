@@ -6,7 +6,7 @@
   "hosting": [
     "shared-instance"
   ],
-  "description": "柏讯（wire 线）客户面操作 MCP（v1 子集）：需求单提交/列表/详情、数据集只读查询/聚合/行读、实体对象浏览（search/get/relations 沿关系遍历）、市场目录/订阅/退订、客户域动作提议面（wire_action_list/propose/status——提议即时回执不阻塞，执行走柏讯控制台确认链）。进站 Bearer 原样转发——双轨鉴权（Logto ID token / wdk_ key）、viewer 只读、需求单合规门全由 wire 判定。",
+  "description": "柏讯（wire 线）客户面操作 MCP（v1 子集）：需求单提交/列表/详情、数据集只读查询/聚合/行读、实体对象浏览（search/get/relations 沿关系遍历）、市场目录/订阅/退订、客户域动作提议面（wire_action_list/propose/status——提议即时回执不阻塞，执行走柏讯控制台确认链）、星研内容供给面（wire_content_browse/search + wire_claim_resolve——按 slug/claim-id 取回断言骨架与锚小节正文）。进站 Bearer 原样转发——双轨鉴权（Logto ID token / wdk_ key）、viewer 只读、需求单合规门全由 wire 判定。",
   "skills_eligible_for_packs": [
     "wire-customer-ops"
   ],
@@ -40,12 +40,16 @@
         "wire_object_relations",
         "wire_action_list",
         "wire_action_propose",
-        "wire_action_status"
+        "wire_action_status",
+        "wire_content_browse",
+        "wire_content_search",
+        "wire_claim_resolve"
       ],
       "data_sources": [
-        "fd-wire-api 客户面 /api/v1/demands|datasets|market/*（柏讯控制台同源）"
+        "fd-wire-api 客户面 /api/v1/demands|datasets|market/*（柏讯控制台同源）",
+        "fd-wire-api /api/v1/xingyan/items|claims/*（星研内容只读快照，源自官网三区 feed）"
       ],
-      "notes": "写操作（demand_submit/market_subscribe/unsubscribe）显式命名；需求单合规门（公开源 URL+公开数据声明）422 逐字段透传，绝不代勾；approval 档订阅自动转访问申请（上游语义）。"
+      "notes": "写操作（demand_submit/market_subscribe/unsubscribe）显式命名；需求单合规门（公开源 URL+公开数据声明）422 逐字段透传，绝不代勾；approval 档订阅自动转访问申请（上游语义）。星研内容三工具只读，响应携带 snapshot 指纹与 stale 标记（上游故障时旧快照继续服务，绝不返回空集）。"
     }
   ],
   "tool_risk": {
