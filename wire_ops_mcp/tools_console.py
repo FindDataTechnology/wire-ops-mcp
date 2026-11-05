@@ -318,6 +318,56 @@ def register(mcp: FastMCP, client: WireClient) -> None:
             bearer=_bearer_or_raise(),
         )
 
+    # ── 自理动作闸面（add-esignature-selfaction-gate 组 1；ai/actions.py REGISTRY
+    #    形态=action_id 字符串，wire.esignature.* 等自理写动作的唯一壹座入口）──
+    #    上游=/api/v1/ai/actions 五端点（面板直发入口，require_console_actor）。
+    #    对偶义务同 domain 版：propose 即时 pending 不等待人工确认（阻塞实现
+    #    会被壹座回合归因 stalled）；确认与执行在柏讯唯一确认面——本面结构性
+    #    无 approve/execute 映射。
+
+    @mcp.tool
+    async def wire_self_action_list(page: int = 1, page_size: int = 50) -> Any:
+        """列本企业自理动作提议台账（GET /api/v1/ai/actions）——只读。
+
+        返回提议台账行（action_id、状态 pending_confirm/executed/rejected/
+        failed、tier、impact 摘要），按创建时间倒序；电子签三动作
+        （wire.esignature.initiate/nudge/archive，write→inline 档）的提议与
+        结果都在此可查。可用动作以 REGISTRY 在册名为准——本面不提供
+        approve/execute，任何动作的执行都在柏讯唯一确认面完成。
+        """
+        return await client.request(
+            "GET", "/api/v1/ai/actions", bearer=_bearer_or_raise(),
+            params={"page": page, "page_size": page_size},
+        )
+
+    @mcp.tool
+    async def wire_self_action_propose(action_id: str, args: dict[str, Any]) -> dict[str, Any]:
+        """提议一个自理动作（POST /api/v1/ai/actions/propose）——写提议面。
+
+        即时返回 pending 提议标识（proposal_id/tier/impact 人类可读影响面），
+        **不等待人工确认**；执行由 owner 在柏讯控制台确认后经闸管线进行——
+        本面结构性无 execute。未注册/停用/他企 action_id 与 preflight 失败
+        （如缺 title/signers）一律 4xx 如实文案且不落 pending。下轮巡检用
+        wire_self_action_status 读结果，本轮即收。
+        """
+        return await client.request(
+            "POST", "/api/v1/ai/actions/propose",
+            bearer=_bearer_or_raise(),
+            json_body={"action_id": action_id, "args": args},
+        )
+
+    @mcp.tool
+    async def wire_self_action_status(proposal_id: int) -> Any:
+        """查自理动作提议状态（GET /api/v1/ai/actions/{proposal_id}）——只读。
+
+        返回单条提议台账行；executed 含结果摘要、failed 含错误原文。柏讯侧
+        不推送、壹座侧不轮询建徽标（评审 R2 口径沿用）——岗位下轮巡检读
+        状态即可达意。
+        """
+        return await client.request(
+            "GET", f"/api/v1/ai/actions/{proposal_id}", bearer=_bearer_or_raise()
+        )
+
     # ── 星研内容供给（3）──────────────────────────────────────────────────────
     # 三类窄工具（spec「工具面显式窄声明」）：目录列举 / 条目检索 / claim 取回。
     # 上游是官方公开件镜像，不读客户数据；但工具面仍拒绝未声明扩张——新增

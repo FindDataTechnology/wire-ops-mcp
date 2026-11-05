@@ -143,3 +143,78 @@ async def test_pack_unsubscribe_posts_and_reports(bearer):
     call = fake.calls[0]
     assert call["method"] == "POST"
     assert call["path"] == "/api/v1/packs/macro-price/unsubscribe"
+
+
+# ── 自理动作闸面（add-esignature-selfaction-gate 组 1）───────────────────────
+
+
+async def test_self_action_list_thin_forward(bearer):
+    fake = FakeClient(result=[{"proposal_id": 7, "action_id": "wire.esignature.initiate",
+                               "state": "pending_confirm"}])
+    mcp = await _mk(fake)
+    async with Client(mcp) as c:
+        await c.call_tool("wire_self_action_list", {"page": 1})
+    call = fake.calls[0]
+    assert call["method"] == "GET"
+    assert call["path"] == "/api/v1/ai/actions"
+    assert call["params"] == {"page": 1, "page_size": 50}
+
+
+async def test_self_action_propose_posts_action_id_args(bearer):
+    fake = FakeClient(result={"proposal_id": 9, "action_id": "wire.esignature.initiate",
+                              "state": "pending_confirm", "tier": "inline",
+                              "impact": "发起电子签任务「x」"})
+    mcp = await _mk(fake)
+    async with Client(mcp) as c:
+        out = await c.call_tool("wire_self_action_propose", {
+            "action_id": "wire.esignature.initiate",
+            "args": {"title": "x", "file_name": "c.txt", "file_b64": "QUJD",
+                     "signers": [{"name": "A"}]},
+        })
+    call = fake.calls[0]
+    assert call["method"] == "POST"
+    assert call["path"] == "/api/v1/ai/actions/propose"
+    assert call["json_body"]["action_id"] == "wire.esignature.initiate"
+    assert "signers" in call["json_body"]["args"]
+    # 即时 pending：返回载荷含 tier/impact，无 execute 语义字段
+    assert out.data["tier"] == "inline"
+    assert "proposal_id" in out.data
+
+
+async def test_self_action_status_reads_by_id(bearer):
+    fake = FakeClient(result={"proposal_id": 9, "state": "executed",
+                              "result_summary": "task_id=es_01"})
+    mcp = await _mk(fake)
+    async with Client(mcp) as c:
+        await c.call_tool("wire_self_action_status", {"proposal_id": 9})
+    call = fake.calls[0]
+    assert call["method"] == "GET"
+    assert call["path"] == "/api/v1/ai/actions/9"
+
+
+async def test_self_action_preflight_fail_no_pending_row(bearer):
+    """preflight 失败：4xx 如实文案透传，上游未落 pending（薄转发不吞错）。"""
+    fake = FakeClient(error=WireError("preflight_rejected", 422, "发起签署必须带 title。"))
+    mcp = await _mk(fake)
+    async with Client(mcp) as c:
+        # fastmcp 把工具内异常包成 ToolError——如实文案透传（不吞错、不代兜底）
+        with pytest.raises(Exception) as exc:
+            await c.call_tool("wire_self_action_propose", {
+                "action_id": "wire.esignature.initiate", "args": {},
+            })
+    assert "title" in str(exc.value)
+    assert "422" in str(exc.value)
+
+
+def test_self_action_surface_declared_and_gated():
+    """发布门：三工具在 manifest customer 组且 risk 映射正确（双向对拍）。"""
+    import json
+    from pathlib import Path
+
+    m = json.loads((Path(__file__).resolve().parent.parent / "tool-surface.json").read_text())
+    customer = m["tool_groups"][0]
+    for t in ("wire_self_action_list", "wire_self_action_propose", "wire_self_action_status"):
+        assert t in customer["tools"]
+    assert m["tool_risk"]["wire_self_action_propose"] == "write"
+    assert m["tool_risk"]["wire_self_action_list"] == "read"
+    assert m["tool_risk"]["wire_self_action_status"] == "read"

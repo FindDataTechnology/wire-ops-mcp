@@ -41,6 +41,9 @@
         "wire_action_list",
         "wire_action_propose",
         "wire_action_status",
+        "wire_self_action_list",
+        "wire_self_action_propose",
+        "wire_self_action_status",
         "wire_content_browse",
         "wire_content_search",
         "wire_claim_resolve"
@@ -58,6 +61,9 @@
     "wire_market_unsubscribe": "write",
     "wire_pack_subscribe": "write",
     "wire_pack_unsubscribe": "write",
-    "wire_action_propose": "write"
+    "wire_action_propose": "write",
+    "wire_self_action_propose": "write",
+    "wire_self_action_list": "read",
+    "wire_self_action_status": "read"
   }
 }
