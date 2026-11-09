@@ -72,10 +72,23 @@ class AuthGateMiddleware:
         )
 
 
+#: Headers a bearer may arrive in. `authorization` is the standard one; the MCP
+#: gateway in front of us forwards the caller's token upstream as
+#: `x-authorization` (mcpgw `_get_registry_headers`) and advertises support for
+#: both. Reading only the standard header rejected EVERY proxied call with
+#: `401 {"error": "Authentication required"}` while a direct request passed —
+#: live 2026-11-09: the wire/lex servers were dark behind the gateway and 17
+#: packs declaring their tools could not run.
+_BEARER_HEADERS = (b"authorization", b"x-authorization")
+
+
 def _bearer_from_scope(scope) -> str | None:
     for name, value in scope.get("headers", []):
-        if name == b"authorization":
-            text = value.decode("latin-1")
-            if text.lower().startswith("bearer "):
-                return text[7:].strip() or None
+        if name not in _BEARER_HEADERS:
+            continue
+        text = value.decode("latin-1")
+        if text.lower().startswith("bearer "):
+            token = text[7:].strip()
+            if token:
+                return token
     return None
