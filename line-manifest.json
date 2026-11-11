@@ -1,0 +1,43 @@
+{
+  "schema": "line-manifest/v1",
+  "line": "wire",
+  "public_base_url": "https://wire.finddatatech.cloud",
+  "identity": {
+    "issuer": "https://auth.finddatatech.cloud/oidc",
+    "jwks_uri": "https://auth.finddatatech.cloud/oidc/jwks",
+    "jit_policy": "off",
+    "note": "工具面只把进站 Bearer 原样转发，权威鉴权在上游 fd-wire（Logto ID token / wdk- 数据面 key 双轨）。本线尚无断言兑换端点，故 jit_policy=off——平台代做在 wire 侧一律不允许，不是留白。"
+  },
+  "auth_tracks": [
+    {
+      "kind": "line-native",
+      "name": "wdk-data-key",
+      "accepts": "line-native-key",
+      "fallback": true,
+      "note": "fd-wire 数据面 `Bearer wdk-…` 轨道（api/fd_wire_api/data_plane/auth.py）：客户级凭据、不承载成员身份、per-key 限流与数据集 allowlist 生效。摘掉平台后这条轨照常工作。"
+    },
+    {
+      "kind": "customer-key",
+      "accepts": "ciyuan-sk",
+      "fallback": false,
+      "enforced": false,
+      "migration_task": "converge-line-identity-and-keys#8.1",
+      "note": "目标态：同一客户用词元钥匙直接打 wire 工具面。今天尚未接（8.1 落地前需线自有 wdk- key 或 Logto 登录）。"
+    }
+  ],
+  "scopes": [
+    "line:read",
+    "line:write"
+  ],
+  "billing": {
+    "plane": "ciyuan",
+    "evidence_path": "fd-wire/api/fd_wire_api/billing/sub2api.py",
+    "note": "客户余额与超额扣减都落在 sub2api（词元平面）：settle() 聚合 metering 行数 → 超额经 sub2api 幂等扣减（api/fd_wire_api/billing/settle.py），本仓 billing.db 是账本投影不是钱的真源。故 plane=ciyuan；缺的只是钥匙面（8.1）。"
+  },
+  "surfaces": {
+    "mcp": true,
+    "account": true,
+    "admin": false
+  },
+  "note": "本清单写今天的事实，不写目标：wdk- 轨已生效并作回退；词元钥匙轨属 8.1 的迁移目标。surfaces.account=柏讯控制台（wire.finddatatech.cloud/console）与 /mcp 入口；wire 有内部运营后台（web/src/admin）但不向平台服务主体开放，故 admin=false——即平台不可代做管理动作。"
+}
