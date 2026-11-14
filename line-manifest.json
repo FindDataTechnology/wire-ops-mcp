@@ -20,9 +20,8 @@
       "kind": "customer-key",
       "accepts": "ciyuan-sk",
       "fallback": false,
-      "enforced": false,
-      "migration_task": "converge-line-identity-and-keys#8.1",
-      "note": "目标态：同一客户用词元钥匙直接打 wire 工具面。今天尚未接（8.1 落地前需线自有 wdk- key 或 Logto 登录）。"
+      "enforced": true,
+      "note": "词元客户轨已接通（converge-line-identity-and-keys 8.1，2026-11-14 上产）：网关把客户的 `sk-` 换成 `aud`/`source`=wire、≤600s 的 ES256 票，本服务离线验签后解析到 `billing_customers.sub2api_user_id` 那一行，客户级身份直通 25 个工具。scope 决定读写（`line:write` 缺则 viewer 只读）；**不做成员级动作**（`member_sub` 恒 None），密钥物面（铸/吊 `wdk-`）对词元票一律 403——短命票不能铸长命钥匙。线内实测：真实客户钥匙→换票→线 200；跨线票 401；匿名 401。`wdk-` 直连与 Logto 两条原轨保留不变。"
     }
   ],
   "scopes": [
