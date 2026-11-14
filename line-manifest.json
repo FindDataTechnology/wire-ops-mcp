@@ -2,6 +2,7 @@
   "schema": "line-manifest/v1",
   "line": "wire",
   "public_base_url": "https://wire.finddatatech.cloud",
+  "internal_base_url": "http://10.43.229.59",
   "identity": {
     "issuer": "https://auth.finddatatech.cloud/oidc",
     "jwks_uri": "https://auth.finddatatech.cloud/oidc/jwks",
@@ -38,5 +39,5 @@
     "account": true,
     "admin": false
   },
-  "note": "本清单写今天的事实，不写目标：wdk- 轨已生效并作回退；词元钥匙轨属 8.1 的迁移目标。surfaces.account=柏讯控制台（wire.finddatatech.cloud/console）与 /mcp 入口；wire 有内部运营后台（web/src/admin）但不向平台服务主体开放，故 admin=false——即平台不可代做管理动作。"
+  "note": "本清单写今天的事实，不写目标：wdk- 轨已生效并作回退；词元钥匙轨属 8.1 的迁移目标。surfaces.account=柏讯控制台（wire.finddatatech.cloud/console）与 /mcp 入口；wire 有内部运营后台（web/src/admin）但不向平台服务主体开放，故 admin=false——即平台不可代做管理动作。internal_base_url=http://10.43.229.59 是 fd-prod/wire-ops-mcp 的 ClusterIP:80（车道 `/api/lines/<line>/proxy/*` 的目标）：平台 pod 是 hostNetwork + dnsPolicy=Default，靠宿主解析器，`wire-ops-mcp`/`wire-ops-mcp.fd-prod.svc`/`...svc.cluster.local` 三个全部 ENOTFOUND，症状是车道 502 upstream_error，所以只能写字面 IP；代价是 Service 重建后 IP 会变，改 Service 必须同批改本字段并重出本线镜像（清单烘进镜像，`Dockerfile` COPY）。2026-11-15 线内实测：`POST /mcp` 无票 401 `{\"error\":\"Authentication required\"}`，带平台现签的 ≤600s 票 200 + 真 MCP 握手（protocolVersion 2024-11-05）。"
 }
