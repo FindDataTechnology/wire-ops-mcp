@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import httpx
@@ -21,6 +22,58 @@ import wire_ops_mcp.server as server
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SOURCE = REPO_ROOT / "line-manifest.json"
+
+#: 允许出现在清单里的**字符串**键路径（闭集）。清单随 `/.well-known` 匿名公开，
+#: 自由文本（`note` 一族）不是「写短点」就安全——它压根不该在公开契约里。
+#: 2026-11-15 实测：本仓曾有 5 段 note 约 1.4KB，写着内部代码路径
+#: （`api/fd_wire_api/data_plane/auth.py`、`billing/sub2api.py`、`web/src/admin`）、
+#: ClusterIP 重复、以及「车道地址为什么只能写字面 IP」的完整推演。
+#: 证据已移到 `docs/line-auth-evidence.md`。
+_SANCTIONED_TEXT_PATHS = {
+    "schema", "line", "public_base_url", "internal_base_url",
+    "identity.issuer", "identity.jwks_uri", "identity.jit_policy",
+    "billing.plane", "billing.evidence_url", "billing.evidence_path",
+    "auth_tracks[].name", "auth_tracks[].kind", "auth_tracks[].accepts",
+    "auth_tracks[].migration_task", "scopes[]",
+}
+
+#: 落在 sanction 字段里也照样不许出现的东西。
+_INTERNAL_PATTERNS = (
+    (r"fd-[a-z0-9][a-z0-9-]*-(?:token|key)\b", "Secret 名"),
+    (r"\b[A-Z][A-Z0-9_]{2,}(?:TOKEN|SECRET|PASSWORD|PEM)\b", "凭据类环境变量"),
+    (r"(?<![\w/.-])(?:[\w.-]+/)+[\w.-]+\.(?:py|js|ts|sh|ya?ml)(?::\d+(?:-\d+)?)?", "内部代码路径"),
+)
+
+
+def _walk_strings(node, path: str = ""):
+    if isinstance(node, dict):
+        for k, v in node.items():
+            yield from _walk_strings(v, f"{path}.{k}" if path else str(k))
+    elif isinstance(node, list):
+        for v in node:
+            yield from _walk_strings(v, path + "[]")
+    elif isinstance(node, str):
+        yield path, node
+
+
+def test_source_manifest_has_no_free_text() -> None:
+    """清单的每个字符串都会匿名公开 ⇒ 只许产品语义，不许内部细节。
+
+    判据是**键的闭集**而不是长度（一段 20 字符的 note 一样能写出 Secret 名），
+    外加内容侧扫描（Secret 名 / 凭据类 ENV / 内部代码路径）。
+    """
+    doc = json.loads(SOURCE.read_text(encoding="utf-8"))
+    strings = list(_walk_strings(doc))
+
+    stray = [p for p, _ in strings if p not in _SANCTIONED_TEXT_PATHS]
+    assert not stray, f"清单里出现自由文本键（会随投影公开）: {stray}；证据请写进 docs/"
+
+    # `internal_base_url` 是规格允许写集群内地址的唯一字段，排除在内容扫描外。
+    body = json.dumps({k: v for k, v in doc.items() if k != "internal_base_url"},
+                      ensure_ascii=False)
+    for pattern, what in _INTERNAL_PATTERNS:
+        hit = re.search(pattern, body)
+        assert hit is None, f"清单里出现{what}: {hit.group(0)!r}"
 
 
 def _get(app, path: str) -> httpx.Response:
