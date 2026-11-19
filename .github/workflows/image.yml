@@ -30,8 +30,8 @@ jobs:
       - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.TCR_USERNAME }}
-          password: ${{ secrets.TCR_PASSWORD }}
+          username: ${{ secrets.TCR_USER }}
+          password: ${{ secrets.TCR_PASS }}
 
       - id: prev
         name: 读 main 当前 digest（内容基线）
