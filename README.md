@@ -1,5 +1,7 @@
 # wire-ops-mcp — 柏讯客户面操作 MCP
 
+> **Part of the [Wire line (寻数·柏讯)](https://www.finddatatech.cloud/products/wire) of [FindData](https://www.finddatatech.cloud)** — AI operation surface for the Wire customer plane: demands, workorders and metering, exposed as agent tools.
+
 柏讯（wire 线）的动作 MCP（五线 AI 操作面 C3 切片，v1 子集）：**需求单**提交/列表/详情、
 **数据面读**（列表/查询/聚合/行读）、**市场**目录/订阅/退订——十工具薄包 fd-wire-api
 客户面 REST。
