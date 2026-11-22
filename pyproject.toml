@@ -7,11 +7,11 @@ name = "wire-ops-mcp"
 version = "0.1.0"
 description = "柏讯（wire 线）客户面操作 MCP：需求单/数据面读/市场订阅，双轨鉴权透传（Logto ID token / wdk_ key）。"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [{ name = "FindDataTechnology" }]
 dependencies = [
-    "fastmcp>=2.0",
+    "fastmcp>=4.2.4,<5",
     "click",
     "uvicorn",
     "httpx",
