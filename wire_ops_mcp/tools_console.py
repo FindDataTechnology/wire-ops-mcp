@@ -431,3 +431,94 @@ def register(mcp: FastMCP, client: WireClient) -> None:
             bearer=_bearer_or_raise(),
             params={"locale": locale},
         )
+
+    # ── 追踪主体（wire-subject-tracking；单实体的多通道持续追踪 + 物化）──
+
+    @mcp.tool
+    async def wire_subject_create(
+        kind: str,
+        ref: dict,
+        title: str,
+        description: str | None = None,
+        channels: list[dict] | None = None,
+    ) -> Any:
+        """声明一个追踪主体（POST /api/v1/subjects）。
+
+        kind ∈ {company, industry, chain, country, region}；ref 形如
+        {source: stock_code, code: "600519"} 或 {source: chain_spec, name, segments}。
+        channels 每项 {type, spec}，type ∈ {indicators, announcements, registry,
+        graph, context}。非法 kind/ref/通道 422 如实定位。
+        """
+        body: dict[str, Any] = {"kind": kind, "ref": ref, "title": title}
+        if description is not None:
+            body["description"] = description
+        if channels:
+            body["channels"] = channels
+        return await client.request(
+            "POST", "/api/v1/subjects", bearer=_bearer_or_raise(), json_body=body
+        )
+
+    @mcp.tool
+    async def wire_subject_list(kind: str | None = None) -> Any:
+        """列出本团队的全部追踪主体（GET /api/v1/subjects?kind=）——只读。"""
+        params = {"kind": kind} if kind else None
+        return await client.request(
+            "GET", "/api/v1/subjects", bearer=_bearer_or_raise(), params=params
+        )
+
+    @mcp.tool
+    async def wire_subject_get(subject_id: int) -> Any:
+        """取一个追踪主体的声明与通道（GET /api/v1/subjects/{id}）——只读。"""
+        return await client.request(
+            "GET", f"/api/v1/subjects/{subject_id}", bearer=_bearer_or_raise()
+        )
+
+    @mcp.tool
+    async def wire_subject_read(subject_id: int) -> Any:
+        """扇出主体全部通道读一次（GET /api/v1/subjects/{id}/read）——只读零计量。
+
+        返回 {subject, channels[], timeline[]}；每个通道带 coverage 三态
+        （available/stale/unavailable），上游不可用如实标注、不渲染成 0 条。
+        服务端不做统计推断——关系/传导交给 pack 层技能。
+        """
+        return await client.request(
+            "GET", f"/api/v1/subjects/{subject_id}/read", bearer=_bearer_or_raise()
+        )
+
+    @mcp.tool
+    async def wire_subject_snapshot(subject_id: int) -> Any:
+        """把主体读结果物化成本团队数据集（POST /api/v1/subjects/{id}/snapshot）。
+
+        幂等：同主体再次快照更新既有数据集。返回 {dataset_id, dataset_key,
+        row_count}——该数据集可直接进 dashboard / alert_rule / 市场，走既有面。
+        """
+        return await client.request(
+            "POST", f"/api/v1/subjects/{subject_id}/snapshot",
+            bearer=_bearer_or_raise(), json_body={},
+        )
+
+    @mcp.tool
+    async def wire_subject_archive(subject_id: int) -> Any:
+        """归档一个追踪主体（DELETE /api/v1/subjects/{id}）——删主体并级联删通道。"""
+        return await client.request(
+            "DELETE", f"/api/v1/subjects/{subject_id}", bearer=_bearer_or_raise()
+        )
+
+    @mcp.tool
+    async def wire_subject_add_channel(
+        subject_id: int, ctype: str, spec: dict | None = None
+    ) -> Any:
+        """给主体加一个通道（POST /api/v1/subjects/{id}/channels）。"""
+        return await client.request(
+            "POST", f"/api/v1/subjects/{subject_id}/channels",
+            bearer=_bearer_or_raise(),
+            json_body={"type": ctype, "spec": spec or {}},
+        )
+
+    @mcp.tool
+    async def wire_subject_remove_channel(subject_id: int, channel_id: int) -> Any:
+        """删除主体的一个通道（DELETE /api/v1/subjects/{id}/channels/{cid}）。"""
+        return await client.request(
+            "DELETE", f"/api/v1/subjects/{subject_id}/channels/{channel_id}",
+            bearer=_bearer_or_raise(),
+        )

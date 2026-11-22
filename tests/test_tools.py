@@ -218,3 +218,42 @@ def test_self_action_surface_declared_and_gated():
     assert m["tool_risk"]["wire_self_action_propose"] == "write"
     assert m["tool_risk"]["wire_self_action_list"] == "read"
     assert m["tool_risk"]["wire_self_action_status"] == "read"
+
+
+async def test_subject_tools_thin_forward(bearer):
+    """wire_subject_* 薄转发 + 读写 risk 对拍（wire-subject-tracking 6.2）。"""
+    fake = FakeClient(result={"ok": True})
+    mcp = await _mk(fake)
+    async with Client(mcp) as c:
+        await c.call_tool("wire_subject_create", {
+            "kind": "company", "ref": {"source": "stock_code", "code": "600519"},
+            "title": "茅台", "channels": [{"type": "indicators", "spec": {"indicator_ids": ["x"]}}],
+        })
+        await c.call_tool("wire_subject_read", {"subject_id": 3})
+        await c.call_tool("wire_subject_snapshot", {"subject_id": 3})
+        await c.call_tool("wire_subject_add_channel", {"subject_id": 3, "ctype": "graph"})
+    create, read, snap, addch = fake.calls
+    assert create["method"] == "POST" and create["path"] == "/api/v1/subjects"
+    assert create["json_body"]["kind"] == "company"
+    assert read["method"] == "GET" and read["path"] == "/api/v1/subjects/3/read"
+    assert snap["method"] == "POST" and snap["path"] == "/api/v1/subjects/3/snapshot"
+    assert addch["path"] == "/api/v1/subjects/3/channels"
+
+
+def test_subject_surface_declared_and_risked():
+    """发布门：八工具在 customer 组 + tool_risk 对拍。"""
+    import json
+    from pathlib import Path
+
+    m = json.loads((Path(__file__).resolve().parent.parent / "tool-surface.json").read_text())
+    customer = m["tool_groups"][0]
+    tools = [
+        "wire_subject_create", "wire_subject_list", "wire_subject_get",
+        "wire_subject_read", "wire_subject_snapshot", "wire_subject_archive",
+        "wire_subject_add_channel", "wire_subject_remove_channel",
+    ]
+    for t in tools:
+        assert t in customer["tools"]
+    assert m["tool_risk"]["wire_subject_read"] == "read"
+    assert m["tool_risk"]["wire_subject_snapshot"] == "write"
+    assert m["tool_risk"]["wire_subject_create"] == "write"

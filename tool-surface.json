@@ -6,7 +6,7 @@
   "hosting": [
     "shared-instance"
   ],
-  "description": "柏讯（wire 线）客户面操作 MCP（v1 子集）：需求单提交/列表/详情、数据集只读查询/聚合/行读、实体对象浏览（search/get/relations 沿关系遍历）、市场目录/订阅/退订、客户域动作提议面（wire_action_list/propose/status——提议即时回执不阻塞，执行走柏讯控制台确认链）、星研内容供给面（wire_content_browse/search + wire_claim_resolve——按 slug/claim-id 取回断言骨架与锚小节正文）。进站 Bearer 原样转发——双轨鉴权（Logto ID token / wdk_ key）、viewer 只读、需求单合规门全由 wire 判定。",
+  "description": "柏讯（wire 线）客户面操作 MCP（v1 子集）：需求单提交/列表/详情、数据集只读查询/聚合/行读、实体对象浏览（search/get/relations 沿关系遍历）、市场目录/订阅/退订、客户域动作提议面（wire_action_list/propose/status——提议即时回执不阻塞，执行走柏讯控制台确认链）、星研内容供给面（wire_content_browse/search + wire_claim_resolve——按 slug/claim-id 取回断言骨架与锚小节正文）。进站 Bearer 原样转发——双轨鉴权（Logto ID token / wdk_ key）、viewer 只读、需求单合规门全由 wire 判定。 追踪主体面（wire_subject_*——声明/通道扇出读/物化快照，单实体多通道持续追踪）。",
   "skills_eligible_for_packs": [
     "esign-gate-discipline",
     "xb-triage-queue-contract",
@@ -64,7 +64,15 @@
         "wire_self_action_status",
         "wire_content_browse",
         "wire_content_search",
-        "wire_claim_resolve"
+        "wire_claim_resolve",
+        "wire_subject_create",
+        "wire_subject_list",
+        "wire_subject_get",
+        "wire_subject_read",
+        "wire_subject_snapshot",
+        "wire_subject_archive",
+        "wire_subject_add_channel",
+        "wire_subject_remove_channel"
       ],
       "data_sources": [
         "fd-wire-api 客户面 /api/v1/demands|datasets|market/*（柏讯控制台同源）",
@@ -82,6 +90,14 @@
     "wire_action_propose": "write",
     "wire_self_action_propose": "write",
     "wire_self_action_list": "read",
-    "wire_self_action_status": "read"
+    "wire_self_action_status": "read",
+    "wire_subject_create": "write",
+    "wire_subject_archive": "write",
+    "wire_subject_snapshot": "write",
+    "wire_subject_add_channel": "write",
+    "wire_subject_remove_channel": "write",
+    "wire_subject_list": "read",
+    "wire_subject_get": "read",
+    "wire_subject_read": "read"
   }
 }
