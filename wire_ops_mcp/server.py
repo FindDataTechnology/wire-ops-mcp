@@ -6,7 +6,9 @@ import json
 import os
 from pathlib import Path
 
-from . import SERVER_NAME, surface_report, tools_console
+from fd_open_data_protocol import surface_report
+
+from . import SERVER_NAME, tools_console
 from .auth_gate import AuthGate, AuthGateMiddleware
 from .client import WireClient
 from .config import Settings
@@ -92,7 +94,7 @@ def create_server(settings: Settings | None = None) -> "FastMCP":
     tools_console.register(mcp, client)
     mcp._wire_ops_client = client
     mcp._wire_ops_settings = settings
-    mcp._wire_surface_report = "not_configured"
+    mcp._surface_report = "not_configured"
     return mcp
 
 
@@ -108,7 +110,7 @@ def build_app(settings: Settings | None = None):
             surface_report.ensure_started(mcp)  # 首请求触发：loop 已在跑
             path = (scope.get("path") or "").rstrip("/")
             if path == "/health":
-                state = getattr(mcp, "_wire_surface_report", "not_configured")
+                state = getattr(mcp, "_surface_report", "not_configured")
                 body = {
                     "not_configured": _HEALTH_OK,
                     "ok": _HEALTH_OK_REPORTED,
