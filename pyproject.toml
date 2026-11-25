@@ -12,7 +12,7 @@ license = "MIT"
 authors = [{ name = "FindDataTechnology" }]
 dependencies = [
     "fastmcp>=4.2.4,<5",
-    "fd-open-data-protocol>=0.5.0",
+    "fd-open-data-protocol>=0.5.1",
     "click",
     "uvicorn",
     "httpx",
