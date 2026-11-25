@@ -1,22 +1,12 @@
-"""环境配置（家族模式：Settings.from_env，测试可注入）。"""
+"""环境配置（家族模式：Settings.from_env，测试可注入）。
+
+运行时实现已收敛到 `fd_open_data_protocol.line_ops.config`（openspec:
+enforce-mcp-supply-contract / line-ops-runtime-core）；本模块只保留线自己的前缀
+与默认地址，对外类名与字段不变。
+"""
 
 from __future__ import annotations
 
-import os
-from dataclasses import dataclass
+from fd_open_data_protocol.line_ops.config import make_settings_class
 
-
-@dataclass(frozen=True)
-class Settings:
-    base_url: str = "https://wire.finddatatech.cloud"
-    timeout_seconds: float = 20.0
-    auth_cache_ttl_seconds: float = 60.0
-
-    @classmethod
-    def from_env(cls, env=None) -> "Settings":
-        env = env if env is not None else os.environ
-        return cls(
-            base_url=(env.get("WIRE_OPS_BASE_URL") or cls.base_url).rstrip("/"),
-            timeout_seconds=float(env.get("WIRE_OPS_TIMEOUT_SECONDS") or 20.0),
-            auth_cache_ttl_seconds=float(env.get("WIRE_OPS_AUTH_CACHE_TTL") or 60.0),
-        )
+Settings = make_settings_class("WIRE_OPS", "https://wire.finddatatech.cloud")
